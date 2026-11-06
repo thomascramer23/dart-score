@@ -74,3 +74,33 @@ header .outline:hover{background:var(--brand-yellow);color:var(--brand-backgroun
 .tips .tip-icon{color:var(--brand-yellow)}
 footer .tiny-target{color:var(--brand-yellow)}
 
+
+/* Wide scoring rings and a board that uses the phone's full width. */
+.workspace,.entry-panel{min-width:0}
+.board-svg{max-width:600px}
+@media(max-width:760px){
+  #dartboard{position:relative;left:50%;transform:translateX(-50%);width:calc(100vw - 16px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px));margin:18px 0}
+  .board-svg{max-width:none;width:100%}
+}
+
+/* Keep the current player clear while scoring, including on a scrolled phone. */
+.player.active{outline:3px solid #fff8df;outline-offset:3px;box-shadow:0 0 0 7px var(--brand-primary)}
+.player.active .turn-tag{font-size:11px;font-weight:700;justify-content:center;letter-spacing:1px;min-height:28px}
+.turn-banner{position:sticky;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:5;display:flex;align-items:center;gap:12px;padding:15px;margin-bottom:22px;background:var(--brand-primary);color:#fff;border:2px solid var(--brand-yellow);border-radius:10px;box-shadow:0 5px 16px #0f30212b}
+.turn-banner-player{display:grid;place-items:center;flex-shrink:0;width:38px;height:38px;border-radius:50%;background:var(--brand-yellow);color:var(--brand-background);font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700}
+.turn-banner-text{flex:1;min-width:0}
+.turn-banner-label{display:block;font-size:9px;letter-spacing:1.5px;margin-bottom:4px;color:#fff1c4}
+.turn-banner-text strong{display:block;font-family:'Space Grotesk',sans-serif;font-size:22px;line-height:1.2;overflow-wrap:anywhere}
+.turn-banner-score{font-size:12px;white-space:nowrap;padding:7px 9px;background:#0f302144;border-radius:6px}
+.submit #submit-label{font:inherit;line-height:1.4;text-align:left;overflow-wrap:anywhere;padding-right:12px}
+@media(max-width:760px){.turn-banner{gap:10px;padding:12px;margin-bottom:18px}.turn-banner-text strong{font-size:20px}.three-players .player.active .turn-tag{font-size:8px;letter-spacing:.3px;min-height:25px;padding:5px 3px}}
+
+.checkout{margin:0 0 20px;padding:16px;background:var(--brand-yellow);border:2px solid var(--brand-primary);border-radius:10px;color:var(--brand-background)}
+.checkout-heading>span{font-size:9px;letter-spacing:1.4px;font-weight:700;color:var(--brand-primary-hover)}
+.checkout h3{margin:6px 0 13px;font-family:'Space Grotesk',sans-serif;font-size:17px;line-height:1.4;overflow-wrap:anywhere}
+.checkout-route{display:flex;gap:8px}
+.checkout-target{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 6px;border:1px solid #0f302133;background:#fff8df;border-radius:7px}
+.checkout-target strong{font-family:'Space Grotesk',sans-serif;font-size:27px;line-height:1.3;color:var(--brand-primary-hover)}
+.checkout-target small{font-size:9px;color:#526344}
+.checkout-target small:first-child{letter-spacing:1px;font-size:8px}
+.checkout #checkout-note{font-size:11px;color:#41573a;margin:12px 0 0;line-height:1.5}

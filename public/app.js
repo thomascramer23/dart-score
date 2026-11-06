@@ -1,4 +1,4 @@
-import { newGame, playTurn, undoTurn } from './game.js';
+import { newGame, playTurn, undoTurn, checkoutRoute } from './game.js';
 
 const $ = id => document.getElementById(id);
 const storageKey = 'double-top-game-v1';
@@ -33,6 +33,7 @@ function render() {
     const average = turns.length ? (turns.reduce((s, t) => s + (t.bust ? 0 : t.total), 0) / turns.length).toFixed(1) : '—';
     const card = document.createElement('article');
     card.className = 'player' + (game.active === index ? ' active' : '') + (game.winner === index ? ' won' : '');
+    if (game.active === index) card.setAttribute('aria-current', 'true');
     card.setAttribute('aria-label', `${name}: ${game.scores[index]} remaining${game.winner === index ? ', winner' : game.active === index ? ', your turn' : ''}`);
     const top = textElement('div', '', 'player-top');
     top.append(textElement('span', String(index + 1).padStart(2, '0'), 'avatar'), textElement('span', name));
@@ -45,6 +46,11 @@ function render() {
     return card;
   }));
   $('turn-title').textContent = game.winner === null ? 'Make your mark' : 'That’s game!';
+  const currentName = game.names[game.active];
+  const turnText = textElement('div', '', 'turn-banner-text');
+  turnText.append(textElement('span', game.winner === null ? 'UP TO THROW' : 'GAME COMPLETE', 'turn-banner-label'), textElement('strong', game.winner === null ? `${currentName}’s turn` : `${currentName} wins!`));
+  $('turn-banner').replaceChildren(textElement('span', String(game.active + 1).padStart(2, '0'), 'turn-banner-player'), turnText, textElement('span', game.winner === null ? `${game.scores[game.active]} left` : 'Winner', 'turn-banner-score'));
+  $('submit-label').textContent = game.winner === null ? `Submit ${currentName}’s score` : 'Game complete';
   $('rule-help').textContent = game.rule === 'double' ? 'Reach exactly zero with your final dart on a double (or inner bull). Leaving 1 or missing the double is a bust.' : 'Get to exactly zero to win. Go below zero and your turn is a bust.';
   $('turn-count').textContent = `${game.history.length} TURN${game.history.length === 1 ? '' : 'S'}`;
   $('history').replaceChildren();
@@ -81,6 +87,20 @@ function updateEntry() {
   $('miss').disabled = darts.length >= 3 || game.winner !== null || terminal;
   $('remove-dart').disabled = !darts.length;
   $('entry-help').textContent = game.winner !== null ? 'Start a new game for a rematch, or undo the last turn.' : mode === 'board' ? (terminal ? 'Turn complete. Submit your score to continue.' : 'D = double · T = treble · inner bull = 50 · outer bull = 25') : 'Enter the total for your turn, then pass it over.';
+  const remaining = game.scores[game.active] - (mode === 'board' ? darts.reduce((sum, dart) => sum + dart.value, 0) : 0);
+  const dartsLeft = mode === 'board' ? 3 - darts.length : 3;
+  const route = game.winner === null && !(mode === 'board' && terminal) ? checkoutRoute(remaining, game.rule, dartsLeft) : null;
+  $('checkout').hidden = !route;
+  if (route) {
+    $('checkout-title').textContent = `${game.names[game.active]}, finish ${remaining} in ${route.length} dart${route.length === 1 ? '' : 's'}`;
+    $('checkout-route').replaceChildren(...route.map((target, index) => {
+      const step = textElement('div', '', 'checkout-target');
+      step.setAttribute('aria-label', `${target.name}, ${target.value} points`);
+      step.append(textElement('small', `DART ${(mode === 'board' ? darts.length : 0) + index + 1}`), textElement('strong', target.label), textElement('small', `${target.value} points`));
+      return step;
+    }));
+    $('checkout-note').textContent = route.map(target => target.value).join(' + ') + ` = ${remaining} · ` + (game.rule === 'double' ? 'Finish on a double.' : 'Exactly zero wins.');
+  }
 }
 function boardTerminal() {
   if (!darts.length) return false;
@@ -176,8 +196,8 @@ function svgElement(tag, attrs) {
   return element;
 }
 function buildBoard() {
-  const svg = svgElement('svg', { viewBox: '-205 -205 410 410', class: 'board-svg', role: 'group', 'aria-label': 'Dartboard. Select a scoring segment for each dart.' });
-  svg.append(svgElement('circle', { r: 203, fill: '#26342f' }));
+  const svg = svgElement('svg', { viewBox: '-180 -180 360 360', class: 'board-svg', role: 'group', 'aria-label': 'Dartboard. Select a scoring segment for each dart.' });
+  svg.append(svgElement('circle', { r: 179, fill: '#26342f' }));
   const numbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
   const point = (r, angle) => [r * Math.sin(angle * Math.PI / 180), -r * Math.cos(angle * Math.PI / 180)];
   function interactive(el, value, label, double = false) {
@@ -189,19 +209,21 @@ function buildBoard() {
   }
   numbers.forEach((number, i) => {
     const a = i * 18 - 9, b = i * 18 + 9;
-    [[16, 99, 1], [99, 109, 3], [109, 160, 1], [160, 172, 2]].forEach(([inner, outer, multiple]) => {
+    [[16, 87, 1], [87, 115, 3], [115, 154, 1], [154, 176, 2]].forEach(([inner, outer, multiple]) => {
       const p = point(outer, a), q = point(outer, b), r = point(inner, b), s = point(inner, a);
       const d = `M${p} A${outer},${outer} 0 0 1 ${q} L${r} A${inner},${inner} 0 0 0 ${s} Z`;
       const label = `${multiple === 2 ? 'D' : multiple === 3 ? 'T' : ''}${number}`;
-      interactive(svgElement('path', { d, fill: multiple === 1 ? (i % 2 ? '#ede6d2' : '#313c35') : (i % 2 ? '#517c62' : '#d66c51'), stroke: '#a4ac94', 'stroke-width': .65 }), number * multiple, label, multiple === 2);
+      const segment = svgElement('path', { d, fill: multiple === 1 ? (i % 2 ? '#ede6d2' : '#313c35') : (i % 2 ? '#517c62' : '#d66c51'), stroke: '#a4ac94', 'stroke-width': .65 });
+      interactive(segment, number * multiple, label, multiple === 2);
     });
-    const [x, y] = point(187, i * 18);
-    const text = svgElement('text', { x, y, fill: '#ebeede', 'font-size': 14, 'font-family': 'DM Sans, sans-serif', 'text-anchor': 'middle', 'dominant-baseline': 'central', 'pointer-events': 'none' });
+    const [x, y] = point(134.5, i * 18);
+    const text = svgElement('text', { x, y, fill: i % 2 ? '#26342f' : '#f7f0dc', 'font-size': 17, 'font-weight': 700, 'font-family': 'DM Sans, sans-serif', 'text-anchor': 'middle', 'dominant-baseline': 'central', 'pointer-events': 'none' });
     text.textContent = number; svg.append(text);
+
   });
   interactive(svgElement('circle', { r: 16, fill: '#517c62', stroke: '#b6bea4', 'stroke-width': .7 }), 25, 'Outer bull');
   interactive(svgElement('circle', { r: 7, fill: '#d66c51', stroke: '#b6bea4', 'stroke-width': .7 }), 50, 'Bull', true);
-  $('dartboard').append(svg);
+  $('dartboard').replaceChildren(svg);
 }
 buildBoard();
 render();

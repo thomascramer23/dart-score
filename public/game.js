@@ -13,6 +13,48 @@ export function canFinishDouble(total) {
   const doubles = [50, ...Array.from({ length: 20 }, (_, i) => (i + 1) * 2)];
   return doubles.some(double => [...singles].some(a => singles.has(total - double - a)));
 }
+
+// Prefer fewer darts, then simpler targets and commonly used finishing doubles.
+export function checkoutRoute(total, rule = 'straight', dartsLeft = 3) {
+  if (!Number.isInteger(total) || total <= 0 || !Number.isInteger(dartsLeft) || dartsLeft < 1 || dartsLeft > 3 || total > dartsLeft * 60) return null;
+  const targets = [];
+  for (let n = 20; n >= 1; n--) {
+    targets.push({ label: `S${n}`, name: `Single ${n}`, value: n, double: false, difficulty: 0 });
+    targets.push({ label: `D${n}`, name: `Double ${n}`, value: n * 2, double: true, difficulty: 1 });
+    targets.push({ label: `T${n}`, name: `Triple ${n}`, value: n * 3, double: false, difficulty: 2 });
+  }
+  targets.push({ label: '25', name: 'Outer bull', value: 25, double: false, difficulty: 3 });
+  targets.push({ label: 'Bull', name: 'Inner bull', value: 50, double: true, difficulty: 4 });
+  const doubles = [40, 32, 36, 24, 20, 16, 12, 8, 4, 2, 38, 34, 30, 28, 26, 22, 18, 14, 10, 6, 50];
+  const memo = new Map();
+  function search(remaining, count) {
+    if (remaining <= 0 || remaining > count * 60 || (rule === 'double' && remaining === 1)) return null;
+    const key = `${remaining}:${count}`;
+    if (memo.has(key)) return memo.get(key);
+    let best = null;
+    for (const target of targets) {
+      let route, cost;
+      if (count === 1) {
+        if (target.value !== remaining || (rule === 'double' && !target.double)) continue;
+        route = [target];
+        cost = rule === 'double' ? doubles.indexOf(target.value) / 100 : target.difficulty;
+      } else {
+        const rest = search(remaining - target.value, count - 1);
+        if (!rest) continue;
+        route = [target, ...rest.route];
+        cost = target.difficulty + rest.cost;
+      }
+      if (!best || cost < best.cost) best = { route, cost };
+    }
+    memo.set(key, best);
+    return best;
+  }
+  for (let count = 1; count <= dartsLeft; count++) {
+    const result = search(total, count);
+    if (result) return result.route;
+  }
+  return null;
+}
 export function playTurn(game, total, lastDouble = false) {
   if (game.winner !== null || !Number.isInteger(total) || total < 0 || total > 180 || !isPossibleTotal(total)) throw new Error('Enter a possible three-dart score (0–180).');
   const player = game.active;

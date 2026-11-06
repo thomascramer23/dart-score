@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame, playTurn, undoTurn, canFinishDouble } from '../public/game.js';
+import { newGame, playTurn, undoTurn, canFinishDouble, checkoutRoute } from '../public/game.js';
 
 test('scores alternate and bust restores the starting score of the turn', () => {
   let game = newGame(301);
@@ -92,4 +92,40 @@ test('third player can win, Undo reopens their turn, and saved three-player game
   let restored = newGame(saved.start, saved.rule, saved.names);
   for (const turn of saved.history) restored = playTurn(restored, turn.total, turn.lastDouble);
   assert.deepEqual(restored, game);
+});
+
+test('checkout routes respect straight out, double out, and remaining darts', () => {
+  assert.deepEqual(checkoutRoute(170, 'double').map(t => t.label), ['T20', 'T20', 'Bull']);
+  assert.deepEqual(checkoutRoute(100, 'double').map(t => t.label), ['T20', 'D20']);
+  assert.deepEqual(checkoutRoute(32, 'double').map(t => t.label), ['D16']);
+  assert.deepEqual(checkoutRoute(20, 'straight').map(t => t.label), ['S20']);
+  assert.deepEqual(checkoutRoute(60, 'straight', 1).map(t => t.label), ['T20']);
+  assert.equal(checkoutRoute(60, 'double', 1), null);
+  assert.equal(checkoutRoute(170, 'double', 2), null);
+  assert.equal(checkoutRoute(159, 'double'), null);
+  assert.equal(checkoutRoute(1, 'double'), null);
+  for (const total of [0, -1, 181, 1.5, NaN]) assert.equal(checkoutRoute(total), null);
+  assert.equal(checkoutRoute(20, 'straight', 0), null);
+});
+
+test('all suggested finishes are legal, achievable, and use the fewest darts', () => {
+  const hits = new Set([25, 50]);
+  for (let n = 1; n <= 20; n++) for (const multiple of [1, 2, 3]) hits.add(n * multiple);
+  for (const rule of ['straight', 'double']) {
+    let reachable = new Set(rule === 'double' ? [50, ...Array.from({ length: 20 }, (_, i) => (i + 1) * 2)] : hits);
+    const minimum = new Map();
+    for (let count = 1; count <= 3; count++) {
+      for (const value of reachable) if (!minimum.has(value)) minimum.set(value, count);
+      reachable = new Set([...reachable].flatMap(value => [...hits].map(hit => value + hit)));
+    }
+    for (let total = 1; total <= 180; total++) {
+      const route = checkoutRoute(total, rule);
+      if (!minimum.has(total)) { assert.equal(route, null); continue; }
+      assert.equal(route.length, minimum.get(total));
+      assert.equal(route.reduce((sum, target) => sum + target.value, 0), total);
+      for (const target of route) assert.ok(hits.has(target.value));
+      if (rule === 'double') assert.equal(route.at(-1).double, true);
+      for (let count = 1; count <= 3; count++) assert.equal(Boolean(checkoutRoute(total, rule, count)), minimum.get(total) <= count);
+    }
+  }
 });
