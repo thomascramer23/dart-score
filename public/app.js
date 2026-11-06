@@ -1,8 +1,15 @@
 import { newGame, playTurn, undoTurn, checkoutRoute } from './game.js';
+import { gameRecap, rememberNames, turnFeedback } from './recap.js';
 
 const $ = id => document.getElementById(id);
 const storageKey = 'double-top-game-v1';
-let game = newGame();
+const namesKey = 'double-top-player-names-v1';
+let rememberedNames = rememberNames([], []);
+try {
+  const savedNames = JSON.parse(localStorage.getItem(namesKey));
+  if (Array.isArray(savedNames) && savedNames.length === 3 && savedNames.every(name => typeof name === 'string' && name.length <= 24)) rememberedNames = rememberNames([], savedNames);
+} catch { /* The current game can still restore if name preferences are unavailable. */ }
+let game = newGame(501, 'straight', rememberedNames.slice(0, 2));
 let mode = 'keypad';
 let darts = [];
 let notice = '';
@@ -12,12 +19,56 @@ try {
     let restored = newGame(saved.start, saved.rule, saved.names, saved.starter ?? 0);
     for (const turn of saved.history) restored = playTurn(restored, turn.total, turn.lastDouble);
     game = restored;
+    rememberedNames = rememberNames(rememberedNames, game.names);
   }
 } catch { notice = 'Saved game unavailable. A fresh game is ready.'; }
 
 function persist() {
   try { localStorage.setItem(storageKey, JSON.stringify(game)); }
   catch { $('save-message').textContent = 'Storage unavailable — keep this tab open to keep playing.'; document.querySelector('.local-note').textContent = 'Playing without saving'; }
+}
+function persistNames() {
+  try { localStorage.setItem(namesKey, JSON.stringify(rememberedNames)); } catch { /* Game saving reports storage availability. */ }
+}
+let feedbackTimer;
+let feedbackFadeTimer;
+function hideFeedback() {
+  clearTimeout(feedbackTimer);
+  clearTimeout(feedbackFadeTimer);
+  $('turn-feedback').hidden = true;
+  $('turn-feedback').classList.remove('fading');
+}
+function fadeFeedback() {
+  clearTimeout(feedbackTimer);
+  clearTimeout(feedbackFadeTimer);
+  $('turn-feedback').classList.add('fading');
+  feedbackFadeTimer = setTimeout(hideFeedback, 350);
+}
+function showFeedback() {
+  hideFeedback();
+  const feedback = turnFeedback(game);
+  if (!feedback) return;
+  $('turn-feedback').dataset.kind = feedback.kind;
+  $('feedback-title').textContent = feedback.title;
+  $('feedback-detail').textContent = feedback.detail;
+  $('turn-feedback').hidden = false;
+  feedbackTimer = setTimeout(fadeFeedback, 2000);
+}
+function showRecap() {
+  $('recap-title').textContent = game.winner === null ? 'The game so far.' : `${game.names[game.winner]} wins!`;
+  $('recap-subtitle').textContent = `${game.start} · ${game.rule === 'double' ? 'Double out' : 'Straight out'} · ${game.history.length} turns played${game.winner === null ? ' · In progress' : ''}`;
+  $('recap-players').replaceChildren(...gameRecap(game).map(stats => {
+    const card = textElement('article', '', 'recap-player' + (stats.winner ? ' recap-winner' : ''));
+    const heading = textElement('div', '', 'recap-player-heading');
+    heading.append(textElement('h3', stats.name), textElement('span', stats.winner ? 'WINNER' : `${stats.remaining} left`));
+    const list = document.createElement('dl');
+    for (const [label, value] of [['Turns', stats.turns], ['Turn average', stats.average === null ? '—' : stats.average.toFixed(1)], ['Highest turn', stats.highest ?? '—'], ['Busts', stats.busts], ['Points scored', stats.scored], ['Checkout', stats.checkout ?? '—']]) {
+      const stat = document.createElement('div');
+      stat.append(textElement('dt', label), textElement('dd', value)); list.append(stat);
+    }
+    card.append(heading, list); return card;
+  }));
+  $('recap').showModal();
 }
 function textElement(tag, text, className) {
   const el = document.createElement(tag);
@@ -70,6 +121,7 @@ function render() {
     $('history').append(list);
   }
   $('undo').disabled = !game.history.length;
+  $('show-recap').disabled = !game.history.length;
   $('submit-score').disabled = game.winner !== null;
   $('score').disabled = game.winner !== null;
   $('keypad').querySelectorAll('button').forEach(b => b.disabled = game.winner !== null);
@@ -160,10 +212,16 @@ $('submit-score').onclick = () => {
     const turn = game.history.at(-1);
     notice = game.winner !== null ? `${game.names[player]} wins! Nicely thrown.` : turn.bust ? `Bust! ${game.names[player]} stays on ${turn.before}. ${game.names[game.active]}, you’re up.` : `${total} scored. ${game.names[game.active]}, you’re up.`;
     clearDraft(); persist(); render();
+    showFeedback();
+    if (game.winner !== null) showRecap();
   } catch (error) { $('status').textContent = error.message; }
 };
 $('score').addEventListener('keydown', event => { if (event.key === 'Enter') $('submit-score').click(); });
-$('undo').onclick = () => { game = undoTurn(game); clearDraft(); notice = 'Last turn undone. ' + game.names[game.active] + ', you’re up.'; persist(); render(); };
+$('undo').onclick = () => { hideFeedback(); game = undoTurn(game); clearDraft(); notice = 'Last turn undone. ' + game.names[game.active] + ', you’re up.'; persist(); render(); };
+$('dismiss-feedback').onclick = fadeFeedback;
+$('show-recap').onclick = showRecap;
+$('close-recap').onclick = () => $('recap').close();
+$('recap-new-game').onclick = () => { $('recap').close(); $('new-game').click(); };
 $('miss').onclick = () => addDart(0, 'Miss', false);
 $('remove-dart').onclick = () => { darts.pop(); updateEntry(); };
 function updatePlayerFields() {
@@ -191,7 +249,8 @@ $('new-game').onclick = () => {
   $('finish-rule').value = game.rule;
   $('name-1').value = game.names[0]; $('name-2').value = game.names[1];
   $('player-count').value = String(game.names.length);
-  $('name-3').value = game.names[2] || 'Player 3';
+  $('name-3').value = game.names[2] || rememberedNames[2];
+  $('remembered-players').replaceChildren(...rememberedNames.map(name => { const option = document.createElement('option'); option.value = name; return option; }));
   updatePlayerFields();
   $('starting-player').value = String(game.starter ?? 0);
   $('setup').showModal();
@@ -202,6 +261,8 @@ $('setup-form').onsubmit = event => {
   const names = Array.from({ length: Number($('player-count').value) }, (_, i) => $('name-' + (i + 1)).value.trim() || `Player ${i + 1}`);
   const startingPlayer = $('starting-player').value;
   game = newGame(Number($('start-score').value), $('finish-rule').value, names, startingPlayer === 'random' ? 'random' : Number(startingPlayer));
+  rememberedNames = rememberNames(rememberedNames, names);
+  persistNames(); hideFeedback();
   clearDraft(); notice = `${game.names[game.starter]} starts${startingPlayer === 'random' ? ' — randomly selected' : ''}!`; persist(); render(); $('setup').close();
 };
 
@@ -225,7 +286,7 @@ function buildBoard() {
   }
   numbers.forEach((number, i) => {
     const a = i * 18 - 9, b = i * 18 + 9;
-    [[16, 87, 1], [87, 115, 3], [115, 154, 1], [154, 176, 2]].forEach(([inner, outer, multiple]) => {
+    [[40, 87, 1], [87, 115, 3], [115, 154, 1], [154, 176, 2]].forEach(([inner, outer, multiple]) => {
       const p = point(outer, a), q = point(outer, b), r = point(inner, b), s = point(inner, a);
       const d = `M${p} A${outer},${outer} 0 0 1 ${q} L${r} A${inner},${inner} 0 0 0 ${s} Z`;
       const label = `${multiple === 2 ? 'D' : multiple === 3 ? 'T' : ''}${number}`;
@@ -237,10 +298,11 @@ function buildBoard() {
     text.textContent = number; svg.append(text);
 
   });
-  interactive(svgElement('circle', { r: 16, fill: '#517c62', stroke: '#b6bea4', 'stroke-width': .7 }), 25, 'Outer bull');
-  interactive(svgElement('circle', { r: 7, fill: '#d66c51', stroke: '#b6bea4', 'stroke-width': .7 }), 50, 'Bull', true);
+  interactive(svgElement('circle', { r: 40, fill: '#517c62', stroke: '#b6bea4', 'stroke-width': .7 }), 25, 'Outer bull');
+  interactive(svgElement('circle', { r: 20, fill: '#d66c51', stroke: '#b6bea4', 'stroke-width': .7 }), 50, 'Bull', true);
   $('dartboard').replaceChildren(svg);
 }
 buildBoard();
 render();
 persist();
+persistNames();
