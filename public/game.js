@@ -1,5 +1,7 @@
-export function newGame(start = 501, rule = 'straight', names = ['Player 1', 'Player 2']) {
-  return { start, rule, names, scores: names.map(() => start), active: 0, winner: null, history: [] };
+export function newGame(start = 501, rule = 'straight', names = ['Player 1', 'Player 2'], startingPlayer = 0) {
+  const starter = startingPlayer === 'random' ? Math.floor(Math.random() * names.length) : startingPlayer;
+  if (!Number.isInteger(starter) || starter < 0 || starter >= names.length) throw new Error('Choose a valid starting player.');
+  return { start, rule, names, starter, scores: names.map(() => start), active: starter, winner: null, history: [] };
 }
 export function isPossibleTotal(total) {
   const singles = new Set([0, 25, 50]);

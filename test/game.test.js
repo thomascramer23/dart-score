@@ -51,7 +51,7 @@ test('saved turns replay into the same game; undo crosses a bust correctly', () 
   let game = newGame(301, 'double', ['Alex', 'Sam']);
   for (const total of [180, 60, 180, 100]) game = playTurn(game, total);
   const saved = JSON.parse(JSON.stringify(game));
-  let restored = newGame(saved.start, saved.rule, saved.names);
+  let restored = newGame(saved.start, saved.rule, saved.names, saved.starter ?? 0);
   for (const turn of saved.history) restored = playTurn(restored, turn.total, turn.lastDouble);
   assert.deepEqual(restored, game);
   restored = undoTurn(undoTurn(restored));
@@ -89,7 +89,7 @@ test('third player can win, Undo reopens their turn, and saved three-player game
   assert.deepEqual(game.scores, [301, 301, 0]);
   assert.deepEqual(undoTurn(game), before);
   const saved = JSON.parse(JSON.stringify(game));
-  let restored = newGame(saved.start, saved.rule, saved.names);
+  let restored = newGame(saved.start, saved.rule, saved.names, saved.starter ?? 0);
   for (const turn of saved.history) restored = playTurn(restored, turn.total, turn.lastDouble);
   assert.deepEqual(restored, game);
 });
@@ -106,6 +106,37 @@ test('checkout routes respect straight out, double out, and remaining darts', ()
   assert.equal(checkoutRoute(1, 'double'), null);
   for (const total of [0, -1, 181, 1.5, NaN]) assert.equal(checkoutRoute(total), null);
   assert.equal(checkoutRoute(20, 'straight', 0), null);
+});
+
+test('chosen starter survives refresh, turn rotation, and Undo', () => {
+  let game = newGame(301, 'double', ['Alex', 'Sam', 'Jo'], 2);
+  const initial = game;
+  assert.equal(game.active, 2);
+  game = playTurn(game, 60);
+  assert.equal(game.active, 0);
+  assert.deepEqual(undoTurn(game), initial);
+  const saved = JSON.parse(JSON.stringify(game));
+  let restored = newGame(saved.start, saved.rule, saved.names, saved.starter);
+  for (const turn of saved.history) restored = playTurn(restored, turn.total, turn.lastDouble);
+  assert.deepEqual(restored, game);
+  assert.equal(newGame(501).starter, 0);
+});
+
+test('random draw can choose each player and stores the resolved starter', context => {
+  for (const count of [2, 3]) {
+    for (let index = 0; index < count; index++) {
+      const mock = context.mock.method(Math, 'random', () => (index + 0.5) / count);
+      const game = newGame(501, 'straight', ['Alex', 'Sam', 'Jo'].slice(0, count), 'random');
+      assert.equal(game.starter, index);
+      assert.equal(game.active, index);
+      assert.equal(mock.mock.callCount(), 1);
+      const saved = JSON.parse(JSON.stringify(game));
+      const restored = newGame(saved.start, saved.rule, saved.names, saved.starter);
+      assert.deepEqual(restored, game);
+      assert.equal(mock.mock.callCount(), 1);
+      mock.mock.restore();
+    }
+  }
 });
 
 test('all suggested finishes are legal, achievable, and use the fewest darts', () => {

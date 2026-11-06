@@ -9,7 +9,7 @@ let notice = '';
 try {
   const saved = JSON.parse(localStorage.getItem(storageKey));
   if (saved && [301, 501].includes(saved.start) && ['straight', 'double'].includes(saved.rule) && Array.isArray(saved.names) && [2, 3].includes(saved.names.length) && saved.names.every(n => typeof n === 'string' && n.length <= 24) && Array.isArray(saved.history)) {
-    let restored = newGame(saved.start, saved.rule, saved.names);
+    let restored = newGame(saved.start, saved.rule, saved.names, saved.starter ?? 0);
     for (const turn of saved.history) restored = playTurn(restored, turn.total, turn.lastDouble);
     game = restored;
   }
@@ -170,7 +170,21 @@ function updatePlayerFields() {
   const thirdPlayer = $('player-count').value === '3';
   $('player-3-field').hidden = !thirdPlayer;
   $('name-3').disabled = !thirdPlayer;
+  updateStarterOptions();
 }
+function updateStarterOptions() {
+  const selected = $('starting-player').value;
+  const options = Array.from({ length: Number($('player-count').value) }, (_, index) => {
+    const option = textElement('option', $('name-' + (index + 1)).value.trim() || `Player ${index + 1}`);
+    option.value = String(index);
+    return option;
+  });
+  const random = textElement('option', 'Choose randomly');
+  random.value = 'random';
+  $('starting-player').replaceChildren(...options, random);
+  $('starting-player').value = selected === 'random' || options.some(option => option.value === selected) ? selected : '0';
+}
+for (const id of ['name-1', 'name-2', 'name-3']) $(id).addEventListener('input', updateStarterOptions);
 $('player-count').onchange = updatePlayerFields;
 $('new-game').onclick = () => {
   $('start-score').value = game.start;
@@ -179,14 +193,16 @@ $('new-game').onclick = () => {
   $('player-count').value = String(game.names.length);
   $('name-3').value = game.names[2] || 'Player 3';
   updatePlayerFields();
+  $('starting-player').value = String(game.starter ?? 0);
   $('setup').showModal();
 };
 $('cancel-setup').onclick = () => $('setup').close();
 $('setup-form').onsubmit = event => {
   event.preventDefault();
   const names = Array.from({ length: Number($('player-count').value) }, (_, i) => $('name-' + (i + 1)).value.trim() || `Player ${i + 1}`);
-  game = newGame(Number($('start-score').value), $('finish-rule').value, names);
-  clearDraft(); notice = ''; persist(); render(); $('setup').close();
+  const startingPlayer = $('starting-player').value;
+  game = newGame(Number($('start-score').value), $('finish-rule').value, names, startingPlayer === 'random' ? 'random' : Number(startingPlayer));
+  clearDraft(); notice = `${game.names[game.starter]} starts${startingPlayer === 'random' ? ' — randomly selected' : ''}!`; persist(); render(); $('setup').close();
 };
 
 const ns = 'http://www.w3.org/2000/svg';
