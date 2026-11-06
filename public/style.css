@@ -134,3 +134,26 @@ footer .tiny-target{color:var(--brand-yellow)}
 .turn-feedback{opacity:1;transition:opacity 350ms ease-out}
 .turn-feedback.fading{opacity:0;pointer-events:none}
 @media(prefers-reduced-motion:reduce){.turn-feedback{transition:none}}
+
+/* Scoring stays in place when a turn, suggestion, or status changes. */
+.player-top,.three-players .player-top{display:grid;grid-template-columns:27px minmax(0,1fr);grid-template-rows:27px 28px;gap:8px;align-items:center;min-height:0}
+.player-top>span:nth-child(2),.three-players .player-top>span:nth-child(2){min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player .turn-tag{grid-column:1 / -1;justify-self:start;margin-left:0;font-size:11px;line-height:16px;min-height:28px}
+.player .waiting-turn{visibility:hidden}
+.turn-banner-text strong{min-height:2.4em;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.turn-banner-score{min-width:64px;text-align:center}
+.submit{min-height:54px}
+#submit-score:active:not(:disabled),#keypad button:active:not(:disabled),.quick-scores button:active:not(:disabled),.board-actions button:active:not(:disabled){transform:none}
+.board-svg{height:auto;aspect-ratio:1}
+.dart-slots{min-height:34px}
+.dart-slot{white-space:nowrap}
+.checkout{margin:20px 0 0}
+#history{height:280px;overflow:auto;overscroll-behavior:contain}
+.history-list{height:100%;max-height:none}
+.empty-history{height:100%;display:flex;flex-direction:column;justify-content:center}
+@media(max-width:760px){
+  .player-top,.three-players .player-top{grid-template-columns:22px minmax(0,1fr);grid-template-rows:24px 28px}
+  .three-players .player-top{grid-template-columns:19px minmax(0,1fr);grid-template-rows:24px 25px;gap:5px}
+  .three-players .player .turn-tag{font-size:8px;min-height:25px;line-height:15px}
+  #history{height:240px}
+}

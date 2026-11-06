@@ -88,7 +88,10 @@ function render() {
     card.setAttribute('aria-label', `${name}: ${game.scores[index]} remaining${game.winner === index ? ', winner' : game.active === index ? ', your turn' : ''}`);
     const top = textElement('div', '', 'player-top');
     top.append(textElement('span', String(index + 1).padStart(2, '0'), 'avatar'), textElement('span', name));
-    if (game.active === index) top.append(textElement('span', game.winner === index ? 'WINNER' : 'YOUR TURN', 'turn-tag'));
+    // Reserve the same badge space for every player so switching turns cannot resize cards.
+    const turnTag = textElement('span', game.winner === index ? 'WINNER' : 'YOUR TURN', 'turn-tag');
+    if (game.active !== index) { turnTag.classList.add('waiting-turn'); turnTag.setAttribute('aria-hidden', 'true'); }
+    top.append(turnTag);
     const bottom = textElement('div', '', 'player-bottom');
     for (const [label, value] of [['Turn avg.', average], ['Last turn', turns.length ? (turns.at(-1).bust ? 'Bust' : turns.at(-1).total) : '—']]) {
       const stat = textElement('span', label); stat.append(textElement('b', value)); bottom.append(stat);
@@ -101,7 +104,7 @@ function render() {
   const turnText = textElement('div', '', 'turn-banner-text');
   turnText.append(textElement('span', game.winner === null ? 'UP TO THROW' : 'GAME COMPLETE', 'turn-banner-label'), textElement('strong', game.winner === null ? `${currentName}’s turn` : `${currentName} wins!`));
   $('turn-banner').replaceChildren(textElement('span', String(game.active + 1).padStart(2, '0'), 'turn-banner-player'), turnText, textElement('span', game.winner === null ? `${game.scores[game.active]} left` : 'Winner', 'turn-banner-score'));
-  $('submit-label').textContent = game.winner === null ? `Submit ${currentName}’s score` : 'Game complete';
+  $('submit-label').textContent = game.winner === null ? 'Submit score' : 'Game complete';
   $('rule-help').textContent = game.rule === 'double' ? 'Reach exactly zero with your final dart on a double (or inner bull). Leaving 1 or missing the double is a bust.' : 'Get to exactly zero to win. Go below zero and your turn is a bust.';
   $('turn-count').textContent = `${game.history.length} TURN${game.history.length === 1 ? '' : 'S'}`;
   $('history').replaceChildren();
@@ -178,6 +181,11 @@ function setMode(next) {
 }
 $('keypad-tab').onclick = () => setMode('keypad');
 $('board-tab').onclick = () => setMode('board');
+// Pointer taps should score, rather than focus a distant SVG segment and scroll to it.
+// Keyboard users still reach and activate the same controls normally.
+document.querySelector('.entry-panel').addEventListener('pointerdown', event => {
+  if (event.isPrimary && event.button === 0 && event.target.closest('#dartboard [data-value], #submit-score, #keypad button, [data-total], #miss, #remove-dart')) event.preventDefault();
+});
 $('score').addEventListener('input', () => {
   $('score').value = $('score').value.replace(/\D/g, '').slice(0, 3);
   $('last-double').checked = false;
@@ -273,7 +281,7 @@ function svgElement(tag, attrs) {
   return element;
 }
 function buildBoard() {
-  const svg = svgElement('svg', { viewBox: '-180 -180 360 360', class: 'board-svg', role: 'group', 'aria-label': 'Dartboard. Select a scoring segment for each dart.' });
+  const svg = svgElement('svg', { viewBox: '-180 -180 360 360', width: 360, height: 360, class: 'board-svg', role: 'group', 'aria-label': 'Dartboard. Select a scoring segment for each dart.' });
   svg.append(svgElement('circle', { r: 179, fill: '#26342f' }));
   const numbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
   const point = (r, angle) => [r * Math.sin(angle * Math.PI / 180), -r * Math.cos(angle * Math.PI / 180)];
