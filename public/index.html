@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0F3021">
+  <meta name="description" content="A simple darts scorekeeper for two or three players. Play 301 or 501 with a keypad or an interactive dartboard.">
+  <title>double top taily · Darts scorekeeper</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header><a class="brand" href="/" aria-label="double top taily home"><span class="brand-icon" aria-hidden="true"><svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 18 18 6M6 6h12v12"/></svg></span><span class="brand-wordmark">double top taily<span class="brand-dot">.</span></span></a><div class="header-right"><span class="local-note"><i></i> Saved on this device</span><button id="new-game" class="button outline">＋ New game</button></div></header>
+    <main>
+      <section class="intro"><div><div class="eyebrow">LESS COUNTING. MORE DARTS.</div><h1>Your next great game.</h1><p>Two or three players. One board. Every point counts.</p></div><div class="game-badge" id="game-badge">501 <span>STRAIGHT OUT</span></div></section>
+      <section class="scoreboard" aria-label="Player scores" id="scoreboard"></section>
+      <div class="workspace">
+        <section class="entry-panel panel">
+          <div class="panel-heading"><h2 id="turn-title">Make your mark</h2><div class="tabs" aria-label="Score entry method"><button id="keypad-tab" class="selected" aria-pressed="true">Keypad</button><button id="board-tab" aria-pressed="false">Dartboard</button></div></div>
+          <div id="keypad-view"><div class="score-input"><label for="score">TURN TOTAL <span>0–180</span></label><input id="score" inputmode="numeric" autocomplete="off" placeholder="0" aria-describedby="entry-help" maxlength="3"><span class="input-unit">points</span></div><div class="quick-scores"><span>QUICK ADD</span><button data-total="26">26</button><button data-total="41">41</button><button data-total="60">60</button><button data-total="85">85</button><button data-total="100">100</button></div><div class="keypad" id="keypad"><button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button data-key="clear" class="utility">Clear</button><button data-key="0">0</button><button data-key="back" class="utility" aria-label="Delete last digit">⌫</button></div><label id="double-option" class="double-option" hidden><input id="last-double" type="checkbox"> Last dart was a double <span>(bull counts)</span></label></div>
+          <div id="board-view" hidden><p class="board-help">Tap where each dart landed. Up to 3 darts per turn.</p><div id="dartboard"></div><div class="dart-slots" id="dart-slots"></div><div class="board-actions"><button id="miss" class="button outline">Miss · 0</button><button id="remove-dart" class="button outline">⌫ Last dart</button><strong id="board-total">0 <small>points</small></strong></div></div>
+          <div id="status" class="status" role="status" aria-live="polite"></div><button id="submit-score" class="submit">Submit score <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 18 18 6M6 6h12v12"/></svg></button><p class="entry-help" id="entry-help">Enter the total for your turn, then pass it over.</p>
+        </section>
+        <aside class="side-column"><section class="panel activity"><div class="panel-heading"><h2>The game so far</h2><span class="small-label" id="turn-count">0 TURNS</span></div><div id="history"></div><button id="undo" class="undo" disabled>↶ Undo last turn</button></section><section class="tips"><span class="tip-icon">◎</span><div><h3>Aim high. Finish strong.</h3><p id="rule-help">Get to exactly zero to win. Go below zero and your turn is a bust.</p></div></section><div class="save-message" id="save-message">◉ &nbsp; Your game picks up right where you left it.</div></aside>
+      </div>
+    </main>
+    <footer><span>BUILT FOR THE LOVE OF THE GAME</span><span>Good darts. Great company. <span class="tiny-target">◎</span></span></footer>
+  </div>
+  <dialog id="setup"><form id="setup-form"><div class="eyebrow">A FRESH START</div><h2>Let’s play darts.</h2><p>Choose your game and step up to the oche.</p><label>Game<select id="start-score"><option value="501">501</option><option value="301">301</option></select></label><label>Finish<select id="finish-rule"><option value="straight">Straight out — exactly zero wins</option><option value="double">Double out — finish on a double</option></select></label><label>Players<select id="player-count"><option value="2">2 players</option><option value="3">3 players</option></select></label><div class="name-fields"><label>Player 1<input id="name-1" maxlength="24" value="Player 1" required></label><label>Player 2<input id="name-2" maxlength="24" value="Player 2" required></label><label id="player-3-field" hidden>Player 3<input id="name-3" maxlength="24" value="Player 3" required disabled></label></div><p class="setup-note">Starting a new game replaces the current game.</p><div class="dialog-actions"><button type="button" id="cancel-setup" class="button outline">Cancel</button><button type="submit" class="button primary">Start game <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 18 18 6M6 6h12v12"/></svg></button></div></form></dialog>
+</body>
+</html>
